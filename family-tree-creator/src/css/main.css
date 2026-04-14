@@ -1,0 +1,37 @@
+@import "./reset.css";
+@import "./variables.css";
+
+body {
+  min-height: 100vh;
+}
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.app-header {
+  background: var(--primary-color);
+  color: white;
+  padding: 1rem 1.5rem;
+}
+.app-main {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+.tree-area {
+  position: relative;
+  min-height: 80vh;
+  background: linear-gradient(to bottom, #eef2ff 0%, #f8fafc 100%);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.editor-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px var(--shadow-color);
+  padding: 1rem;
+}

@@ -1,0 +1,12 @@
+:root {
+  --background-color: #f4f6f8;
+  --surface-color: #ffffff;
+  --primary-color: #2b6cb0;
+  --accent-color: #48bb78;
+  --text-color: #1f2937;
+  --muted-color: #6b7280;
+  --border-color: #d1d5db;
+  --shadow-color: rgba(15, 23, 42, 0.08);
+  --node-width: 240px;
+  --node-height: 120px;
+}
