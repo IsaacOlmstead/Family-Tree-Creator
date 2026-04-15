@@ -3,7 +3,7 @@ import { validatePerson } from "../services/validationService.js";
 import { saveSession } from "../services/indexedDBService.js";
 import { exportTree, importTree } from "../services/storageService.js";
 import { toggleGrid } from "./gridOverlay.js";
-import { renderTree } from "./treeRenderer.js";
+import { renderTree, zoomTree, resetZoom } from "./treeRenderer.js";
 
 export function initializeControls(appState) {
   const panel = document.getElementById("editor-panel");
@@ -17,6 +17,28 @@ export function initializeControls(appState) {
       <button id="import-json-file">Import JSON File</button>
       <button id="add-person">Add New Person</button>
       <input id="json-file-input" type="file" accept=".json,application/json" hidden />
+      <div id="connection-controls" class="connection-controls">
+        <h2>Connection Editor</h2>
+        <div class="form-actions connection-actions">
+          <button id="start-connect" type="button">Connect Nodes</button>
+          <button id="start-disconnect" type="button">Disconnect Line</button>
+          <button id="cancel-connection" type="button" class="hidden">Cancel</button>
+        </div>
+        <div id="connection-status" class="connection-status">
+          Click "Connect Nodes" to select a parent and a child.
+        </div>
+      </div>
+      <div id="zoom-controls" class="connection-controls">
+        <h2>Zoom Controls</h2>
+        <div class="form-actions connection-actions">
+          <button id="zoom-in" type="button">Zoom In</button>
+          <button id="zoom-out" type="button">Zoom Out</button>
+          <button id="reset-zoom" type="button">Reset</button>
+        </div>
+        <div class="connection-status">
+          Use mouse wheel over the tree to zoom.
+        </div>
+      </div>
       <div id="person-form" class="person-form hidden">
         <h2>Add New Person</h2>
         <label>
@@ -48,6 +70,125 @@ export function initializeControls(appState) {
   `;
 
   let gridVisible = false;
+  let connectionMode = null;
+  let pendingParentId = null;
+  let selectedNodeGroup = null;
+
+  const connectButton = document.getElementById("start-connect");
+  const disconnectButton = document.getElementById("start-disconnect");
+  const cancelConnectionButton = document.getElementById("cancel-connection");
+  const connectionStatus = document.getElementById("connection-status");
+  const personForm = document.getElementById("person-form");
+  const formFields = {
+    name: document.getElementById("person-name"),
+    birth: document.getElementById("person-birth"),
+    death: document.getElementById("person-death"),
+    parents: document.getElementById("person-parents"),
+    children: document.getElementById("person-children"),
+  };
+
+  function updateStatus(message) {
+    if (connectionStatus) {
+      connectionStatus.textContent = message;
+    }
+  }
+
+  function clearSelection() {
+    if (selectedNodeGroup) {
+      selectedNodeGroup.classList.remove("selected-node");
+      selectedNodeGroup = null;
+    }
+    pendingParentId = null;
+  }
+
+  function setConnectionMode(mode) {
+    connectionMode = mode;
+    clearSelection();
+
+    if (connectButton) {
+      connectButton.classList.toggle("active", mode === "connect");
+    }
+    if (disconnectButton) {
+      disconnectButton.classList.toggle("active", mode === "disconnect");
+    }
+    if (cancelConnectionButton) {
+      cancelConnectionButton.classList.toggle("hidden", mode === null);
+    }
+
+    if (mode === "connect") {
+      updateStatus("Select a parent node, then click a child node to connect them.");
+    } else if (mode === "disconnect") {
+      updateStatus("Click a line to disconnect it.");
+    } else {
+      updateStatus("Click Connect or Disconnect to manage lines manually.");
+    }
+  }
+
+  function handleNodeClick(nodeId, group) {
+    if (connectionMode !== "connect") return;
+
+    if (!pendingParentId) {
+      pendingParentId = nodeId;
+      selectedNodeGroup = group;
+      selectedNodeGroup.classList.add("selected-node");
+      updateStatus(`Parent selected: ${nodeId}. Now click the child node.`);
+      return;
+    }
+
+    if (pendingParentId === nodeId) {
+      updateStatus("Please select a different child node.");
+      return;
+    }
+
+    addConnection(pendingParentId, nodeId);
+    setConnectionMode(null);
+  }
+
+  function handlePathClick(sourceId, targetId) {
+    if (connectionMode !== "disconnect") return;
+    removeConnection(sourceId, targetId);
+    setConnectionMode(null);
+  }
+
+  function addConnection(sourceId, targetId) {
+    const source = appState.people.find((person) => person.id === sourceId);
+    const target = appState.people.find((person) => person.id === targetId);
+    if (!source || !target) {
+      updateStatus("Could not find selected people.");
+      return;
+    }
+    if (sourceId === targetId) {
+      updateStatus("Nodes must be different.");
+      return;
+    }
+
+    if (!source.children.includes(targetId)) {
+      source.children.push(targetId);
+    }
+    if (!target.parents.includes(sourceId)) {
+      target.parents.push(sourceId);
+    }
+
+    saveSession(appState.people);
+    renderTree(appState.people, { onNodeClick: handleNodeClick, onPathClick: handlePathClick });
+    updateStatus(`Connected ${sourceId} → ${targetId}.`);
+  }
+
+  function removeConnection(sourceId, targetId) {
+    const source = appState.people.find((person) => person.id === sourceId);
+    const target = appState.people.find((person) => person.id === targetId);
+    if (!source || !target) {
+      updateStatus("Could not find selected connection.");
+      return;
+    }
+
+    source.children = source.children.filter((childId) => childId !== targetId);
+    target.parents = target.parents.filter((parentId) => parentId !== sourceId);
+
+    saveSession(appState.people);
+    renderTree(appState.people, { onNodeClick: handleNodeClick, onPathClick: handlePathClick });
+    updateStatus(`Disconnected ${sourceId} → ${targetId}.`);
+  }
 
   document.getElementById("auto-adjust")?.addEventListener("click", () => {
     window.location.reload();
@@ -92,8 +233,8 @@ export function initializeControls(appState) {
       }
       appState.people = data;
       saveSession(appState.people);
-      renderTree(appState.people);
-      alert("Tree imported successfully.");
+      renderTree(appState.people, { onNodeClick: handleNodeClick, onPathClick: handlePathClick });
+      updateStatus("Tree imported successfully.");
     } catch (error) {
       alert(error.message);
     } finally {
@@ -101,21 +242,36 @@ export function initializeControls(appState) {
     }
   });
 
-  const personForm = document.getElementById("person-form");
-  const formFields = {
-    name: document.getElementById("person-name"),
-    birth: document.getElementById("person-birth"),
-    death: document.getElementById("person-death"),
-    parents: document.getElementById("person-parents"),
-    children: document.getElementById("person-children"),
-  };
-
   document.getElementById("add-person")?.addEventListener("click", () => {
     personForm?.classList.toggle("hidden");
   });
 
   document.getElementById("cancel-person")?.addEventListener("click", () => {
     personForm?.classList.add("hidden");
+  });
+
+  connectButton?.addEventListener("click", () => {
+    setConnectionMode(connectionMode === "connect" ? null : "connect");
+  });
+
+  disconnectButton?.addEventListener("click", () => {
+    setConnectionMode(connectionMode === "disconnect" ? null : "disconnect");
+  });
+
+  cancelConnectionButton?.addEventListener("click", () => {
+    setConnectionMode(null);
+  });
+
+  document.getElementById("zoom-in")?.addEventListener("click", () => {
+    zoomTree(1.2);
+  });
+
+  document.getElementById("zoom-out")?.addEventListener("click", () => {
+    zoomTree(0.8);
+  });
+
+  document.getElementById("reset-zoom")?.addEventListener("click", () => {
+    resetZoom();
   });
 
   document.getElementById("submit-person")?.addEventListener("click", () => {
@@ -161,10 +317,13 @@ export function initializeControls(appState) {
 
     appState.people.push(newPerson);
     saveSession(appState.people);
-    renderTree(appState.people);
+    renderTree(appState.people, { onNodeClick: handleNodeClick, onPathClick: handlePathClick });
     personForm?.classList.add("hidden");
     Object.values(formFields).forEach((field) => {
       if (field instanceof HTMLInputElement) field.value = "";
     });
+    updateStatus("Person added successfully.");
   });
+
+  renderTree(appState.people, { onNodeClick: handleNodeClick, onPathClick: handlePathClick });
 }

@@ -1,6 +1,11 @@
 ﻿@import "./reset.css";
 @import "./variables.css";
 
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
 body {
   min-height: 100vh;
 }
@@ -19,10 +24,14 @@ body {
   grid-template-columns: 1.8fr 1fr;
   gap: 1rem;
   padding: 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 .tree-area {
   position: relative;
-  min-height: 80vh;
+  min-height: 0;
+  height: 100%;
   background: linear-gradient(to bottom, #eef2ff 0%, #f8fafc 100%);
   border: 1px solid var(--border-color);
   border-radius: 1rem;
@@ -66,6 +75,36 @@ body {
   cursor: pointer;
 }
 
+.controls button.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.connection-controls {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+
+.connection-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.connection-status {
+  margin-top: 0.75rem;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.selected-node rect {
+  stroke: #2563eb;
+  stroke-width: 3;
+}
+
 .controls input,
 .controls textarea {
   width: 100%;
@@ -105,4 +144,6 @@ body {
   border-radius: 1rem;
   box-shadow: 0 10px 30px var(--shadow-color);
   padding: 1rem;
+  overflow-y: auto;
+  min-height: 0;
 }
