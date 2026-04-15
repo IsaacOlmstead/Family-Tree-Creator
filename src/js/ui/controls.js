@@ -53,15 +53,7 @@ export function initializeControls(appState) {
           Death Date
           <input id="person-death" type="date" />
         </label>
-        <label>
-          Parent IDs (comma-separated)
-          <input id="person-parents" type="text" placeholder="p1, p2" />
-        </label>
-        <label>
-          Child IDs (comma-separated)
-          <input id="person-children" type="text" placeholder="p3, p4" />
-        </label>
-        <div class="form-actions">
+          <div class="form-actions">
           <button id="submit-person" type="button">Add Person</button>
           <button id="cancel-person" type="button">Cancel</button>
         </div>
@@ -83,8 +75,6 @@ export function initializeControls(appState) {
     name: document.getElementById("person-name"),
     birth: document.getElementById("person-birth"),
     death: document.getElementById("person-death"),
-    parents: document.getElementById("person-parents"),
-    children: document.getElementById("person-children"),
   };
 
   function updateStatus(message) {
@@ -191,7 +181,14 @@ export function initializeControls(appState) {
   }
 
   document.getElementById("auto-adjust")?.addEventListener("click", () => {
-    window.location.reload();
+    appState.people.forEach((person) => {
+      delete person.x;
+      delete person.y;
+    });
+    renderTree(appState.people, { onNodeClick: handleNodeClick, onPathClick: handlePathClick });
+    resetZoom();
+    saveSession(appState.people);
+    updateStatus("Auto-adjust layout complete.");
   });
 
   document.getElementById("toggle-grid")?.addEventListener("click", () => {
@@ -278,42 +275,19 @@ export function initializeControls(appState) {
     const name = formFields.name?.value.trim() ?? "";
     const birth = formFields.birth?.value ?? "";
     const death = formFields.death?.value ?? "";
-    const parents = (formFields.parents?.value ?? "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const children = (formFields.children?.value ?? "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
-
     const newPerson = {
       id: createId(),
       name,
       birth,
       death,
-      parents,
-      children,
+      parents: [],
+      children: [],
     };
 
     if (!validatePerson(newPerson)) {
       alert("Please provide a valid name and valid dates.");
       return;
     }
-
-    parents.forEach((parentId) => {
-      const parent = appState.people.find((person) => person.id === parentId);
-      if (parent && !parent.children.includes(newPerson.id)) {
-        parent.children.push(newPerson.id);
-      }
-    });
-
-    children.forEach((childId) => {
-      const child = appState.people.find((person) => person.id === childId);
-      if (child && !child.parents.includes(newPerson.id)) {
-        child.parents.push(newPerson.id);
-      }
-    });
 
     appState.people.push(newPerson);
     saveSession(appState.people);

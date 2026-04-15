@@ -297,6 +297,48 @@ export function renderTree(people, { onNodeClick, onPathClick } = {}) {
     { passive: false }
   );
 
+  let panStart = null;
+
+  function onPanMove(event) {
+    if (!panStart) return;
+    const current = svgPointFromEvent(event);
+    if (!current) return;
+
+    currentZoom.x = panStart.view.x - (current.x - panStart.start.x);
+    currentZoom.y = panStart.view.y - (current.y - panStart.start.y);
+    updateSvgViewBox();
+  }
+
+  function onPanEnd(event) {
+    if (!panStart) return;
+    panStart = null;
+    svg.releasePointerCapture(event.pointerId);
+    window.removeEventListener("pointermove", onPanMove);
+    window.removeEventListener("pointerup", onPanEnd);
+  }
+
+  svg.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    if (event.target.closest("g[data-node-id]") || event.target.closest("path")) return;
+    event.preventDefault();
+
+    const start = svgPointFromEvent(event);
+    if (!start) return;
+
+    panStart = {
+      start,
+      view: { x: currentZoom.x, y: currentZoom.y },
+    };
+
+    svg.setPointerCapture(event.pointerId);
+    window.addEventListener("pointermove", onPanMove);
+    window.addEventListener("pointerup", onPanEnd);
+  });
+
+  svg.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+
   svg.addEventListener("dblclick", () => {
     resetZoom();
   });

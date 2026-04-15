@@ -50,9 +50,32 @@ body {
   background-size: 40px 40px;
 }
 
+.tree-area {
+  user-select: none;
+}
+
 .tree-area svg.tree-svg {
   position: relative;
   z-index: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}
+
+.tree-area svg.tree-svg:active {
+  cursor: grabbing;
+}
+
+.tree-area path.line-hit:hover {
+  stroke: rgba(37, 99, 235, 0.2);
+}
+
+.tree-area svg.tree-svg text {
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
 }
 
 .hidden {
